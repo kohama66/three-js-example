@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Three.js Example</title>
+    <style>
+      body {
+        margin: 0;
+      }
+      canvas {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.158.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.158.0/examples/jsm/"
+        }
+      }
+    </script>
+
+    <script type="module">
+      import * as THREE from "three";
+      import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+      import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
+      import { MTLLoader } from "three/addons/loaders/MTLLoader.js";
+
+      // シーン、カメラ、レンダラーの設定
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
+      );
+      const renderer = new THREE.WebGLRenderer();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      // カメラの位置設定
+      camera.position.set(0, 0, 30);
+      camera.lookAt(scene.position);
+
+      // ライトの追加
+      const ambientLight = new THREE.AmbientLight(0xcccccc, 0.8);
+      scene.add(ambientLight);
+
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+      directionalLight.position.set(5, 5, 5).normalize();
+      scene.add(directionalLight);
+
+      // OrbitControlsの設定
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.25;
+      controls.screenSpacePanning = false;
+      controls.maxPolarAngle = Math.PI / 2;
+
+      // OBJファイルの読み込み
+      const mtlLoader = new MTLLoader();
+      mtlLoader.load(
+        "models/3ds/mesh.mtl",
+        (materials) => {
+          console.log("Materials loaded successfully");
+          materials.preload();
+          const objLoader = new OBJLoader();
+          objLoader.setMaterials(materials);
+          objLoader.load(
+            "models/3ds/mesh.obj",
+            (object) => {
+              console.log("Model loaded:", object);
+              console.log("Number of children:", object.children.length);
+              object.scale.set(10, 10, 10);
+              object.position.set(2, 0, 0);
+
+              const textureLoader = new THREE.TextureLoader();
+              object.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                  const texture = textureLoader.load("models/3ds/albedo.png");
+                  child.material = new THREE.MeshPhongMaterial({
+                    map: texture,
+                  });
+                  console.log("Mesh found:", child);
+                  console.log(
+                    "Geometry vertex count:",
+                    child.geometry.attributes.position.count
+                  );
+                }
+              });
+
+              scene.add(object);
+
+              // バウンディングボックスを追加
+              // const box = new THREE.Box3().setFromObject(object);
+              // const helper = new THREE.Box3Helper(box, 0xffff00);
+              // scene.add(helper);
+
+              console.log("Bounding box:", box.min, box.max);
+              console.log("Model structure:", object);
+            },
+            (xhr) => {
+              console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
+            },
+            (error) => {
+              console.error("An error happened while loading OBJ", error);
+            }
+          );
+        },
+        (xhr) => {
+          console.log((xhr.loaded / xhr.total) * 100 + "% MTL loaded");
+        },
+        (error) => {
+          console.error("Error loading MTL file:", error);
+        }
+      );
+
+      function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+      }
+
+      animate();
+
+      // ウィンドウのリサイズ処理
+      window.addEventListener("resize", onWindowResize, false);
+
+      function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
+    </script>
+  </body>
+</html>
